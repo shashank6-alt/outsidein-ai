@@ -32,10 +32,28 @@ const extractJsonObject = (raw) => {
     return null;
   }
   let depth = 0;
+  let inString = false;
+  let escaped = false;
   for (let i = start; i < raw.length; i += 1) {
-    if (raw[i] === '{') depth += 1;
-    if (raw[i] === '}') depth -= 1;
-    if (depth === 0) {
+    const character = raw[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (character === '\\') {
+        escaped = true;
+      } else if (character === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+    } else if (character === '{') {
+      depth += 1;
+    } else if (character === '}') {
+      depth -= 1;
+    }
+    if (depth === 0 && !inString) {
       return raw.slice(start, i + 1);
     }
   }
@@ -110,7 +128,12 @@ const validateRequestBody = (body) => {
   const activityType = clampText(body.activityType, '');
   const timeMinutes = Number(body.timeMinutes);
 
-  if (!environment || !energyLevel || !activityType || Number.isNaN(timeMinutes)) {
+  if (
+    !environment ||
+    !energyLevel ||
+    !activityType ||
+    !Number.isFinite(timeMinutes)
+  ) {
     return { ok: false, message: 'environment, energyLevel, activityType, and timeMinutes are required.' };
   }
 

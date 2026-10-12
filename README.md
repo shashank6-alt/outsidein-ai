@@ -23,7 +23,7 @@ npm install
 cp .env.example .env
 ```
 
-Set `OLLAMA_MODEL` to a model installed in your local Ollama runtime. If `OLLAMA_MODEL` is blank, the server tries the first model returned by `OLLAMA_BASE_URL/api/tags`.
+The default local model is `gemma3:1b`. Keep `OLLAMA_MODEL=gemma3:1b` when that model is installed. The server verifies the configured name against `OLLAMA_BASE_URL/api/tags` before generating a mission.
 
 ## Run
 
@@ -52,6 +52,9 @@ Open `http://localhost:5173`.
 ## Behavior notes
 
 - Mission generation uses Ollama first.
+- The browser calls the Node `/api/mission` proxy; it never calls Ollama directly.
+- If the configured Ollama model is not installed, the server reports the available models and returns a labeled preset instead of silently selecting a different model.
+- Ollama generation waits up to 120 seconds by default so local model cold starts and inference are not aborted prematurely. Override with `OLLAMA_TIMEOUT_MS` when needed.
 - If Ollama is unavailable, the app returns a clearly labeled **Preset mission**.
 - Hugging Face fallback is disabled by default and only used when `ENABLE_HF_FALLBACK=true` with `HF_API_KEY` and `HF_MODEL` set.
 - Reflections are stored in browser `localStorage` only and are never sent to external AI providers.

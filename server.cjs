@@ -11,13 +11,19 @@ dotenv.config();
 
 const port = Number(process.env.PORT || 3001);
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
-const configuredOllamaModel = (process.env.OLLAMA_MODEL || '').trim();
-const ollamaTimeoutMs = Number(process.env.OLLAMA_TIMEOUT_MS || 20000);
+const configuredOllamaModel = (process.env.OLLAMA_MODEL || 'gemma3:1b').trim();
+const configuredOllamaTimeoutMs = Number(process.env.OLLAMA_TIMEOUT_MS || 120000);
+const ollamaTimeoutMs = Number.isFinite(configuredOllamaTimeoutMs) && configuredOllamaTimeoutMs > 0
+  ? configuredOllamaTimeoutMs
+  : 120000;
 
 const enableHfFallback = (process.env.ENABLE_HF_FALLBACK || 'false').toLowerCase() === 'true';
 const hfApiKey = process.env.HF_API_KEY || '';
 const hfModel = process.env.HF_MODEL || '';
-const hfTimeoutMs = Number(process.env.HF_TIMEOUT_MS || 20000);
+const configuredHfTimeoutMs = Number(process.env.HF_TIMEOUT_MS || 20000);
+const hfTimeoutMs = Number.isFinite(configuredHfTimeoutMs) && configuredHfTimeoutMs > 0
+  ? configuredHfTimeoutMs
+  : 20000;
 
 const withTimeout = async (requestFn, timeoutMs) => {
   const controller = new AbortController();
@@ -61,11 +67,15 @@ const resolveOllamaModel = async () => {
     return configuredOllamaModel;
   }
 
-  if (configuredOllamaModel && !models.length) {
-    return configuredOllamaModel;
+  if (configuredOllamaModel) {
+    const availableModels = models.length ? models.join(', ') : 'none';
+    throw new Error(
+      `Configured Ollama model "${configuredOllamaModel}" is not installed. ` +
+      `Available models: ${availableModels}.`
+    );
   }
 
-  return models[0] || configuredOllamaModel;
+  return models[0] || null;
 };
 
 const generateWithOllama = async (input) => {
@@ -233,5 +243,8 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(port, () => {
   // eslint-disable-next-line no-console
-  console.log(`OutsideIn AI server running on http://localhost:${port}`);
+  console.log(
+    `OutsideIn AI server running on http://localhost:${port} ` +
+    `(Ollama: ${ollamaBaseUrl}, model: ${configuredOllamaModel}, timeout: ${ollamaTimeoutMs}ms)`
+  );
 });

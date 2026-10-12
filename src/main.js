@@ -80,6 +80,33 @@ const setStatus = (text, isError = false) => {
 
 const toText = (value) => (typeof value === 'string' ? value : '');
 
+const readApiResponse = async (response) => {
+  const text = await response.text();
+  let data = null;
+  if (text.trim()) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(
+        `Mission service returned invalid JSON (HTTP ${response.status}).`
+      );
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      toText(data?.error) ||
+      `Mission service request failed (HTTP ${response.status}).`
+    );
+  }
+
+  if (!data || typeof data !== 'object') {
+    throw new Error('Mission service returned an empty response.');
+  }
+
+  return data;
+};
+
 const getJournal = () => {
   try {
     const raw = localStorage.getItem(journalKey);
@@ -232,9 +259,9 @@ missionForm.addEventListener('submit', async (event) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const data = await response.json();
-    if (!response.ok || !data?.mission) {
-      throw new Error(toText(data?.error) || 'Mission generation failed.');
+    const data = await readApiResponse(response);
+    if (!data.mission) {
+      throw new Error('Mission service response did not include a mission.');
     }
 
     const sourceLabel = data.source === 'ollama'

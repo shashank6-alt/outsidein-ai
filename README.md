@@ -53,6 +53,7 @@ Open `http://localhost:5173`.
 
 - Mission generation uses Ollama first.
 - The browser calls the Node `/api/mission` proxy; it never calls Ollama directly.
+- The browser reads API responses safely before parsing JSON, so empty or non-JSON proxy responses show a useful HTTP error instead of `Unexpected end of JSON input`.
 - If the configured Ollama model is not installed, the server reports the available models and returns a labeled preset instead of silently selecting a different model.
 - Ollama generation waits up to 120 seconds by default so local model cold starts and inference are not aborted prematurely. Override with `OLLAMA_TIMEOUT_MS` when needed.
 - If Ollama is unavailable, the app returns a clearly labeled **Preset mission**.

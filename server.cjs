@@ -35,6 +35,18 @@ const withTimeout = async (requestFn, timeoutMs) => {
   }
 };
 
+const readResponseJson = async (response, provider) => {
+  const text = await response.text();
+  if (!text.trim()) {
+    throw new Error(`${provider} returned an empty response.`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`${provider} returned invalid JSON.`);
+  }
+};
+
 const readJsonBody = async (req) => {
   let data = '';
   for await (const chunk of req) {
@@ -60,7 +72,7 @@ const resolveOllamaModel = async () => {
     throw new Error(`Could not read Ollama models (${response.status}).`);
   }
 
-  const data = await response.json();
+  const data = await readResponseJson(response, 'Ollama model list');
   const models = Array.isArray(data.models) ? data.models.map((m) => m.name).filter(Boolean) : [];
 
   if (configuredOllamaModel && models.includes(configuredOllamaModel)) {
@@ -114,7 +126,7 @@ const generateWithOllama = async (input) => {
     throw new Error(`Ollama request failed (${response.status}): ${errorText.slice(0, 180)}`);
   }
 
-  const data = await response.json();
+  const data = await readResponseJson(response, 'Ollama generation');
   const mission = parseMissionPayload(data.response, input);
   return { mission, model };
 };
@@ -147,7 +159,7 @@ const generateWithHuggingFace = async (input) => {
     throw new Error(`Hugging Face fallback failed (${response.status}): ${err.slice(0, 180)}`);
   }
 
-  const payload = await response.json();
+  const payload = await readResponseJson(response, 'Hugging Face');
   const text = Array.isArray(payload) && payload[0]?.generated_text
     ? payload[0].generated_text
     : JSON.stringify(payload);
@@ -172,7 +184,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
   if (req.method === 'OPTIONS') {
-    writeJson(res, 204, {});
+    writeJson(res, 200, { ok: true });
     return;
   }
 
